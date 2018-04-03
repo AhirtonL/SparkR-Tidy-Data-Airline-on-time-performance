@@ -1,0 +1,84 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+sqlContext <- sparkR.session(sc)
+```
+
+```{r}
+airlines <- read.df(path="/resources/2008_simple.csv", "csv",header="true", inferSchema="true")
+```
+
+```{r}
+printSchema(airlines)
+```
+
+
+```{r}
+planes <- read.df("/resources/plane-data.csv","csv",header="true", inferSchema="true")
+```
+
+```{r}
+printSchema(planes)
+```
+
+
+```{r}
+joined <- join(airlines, planes, airlines$TailNum == planes$tailnum)
+```
+
+
+```{r}
+df1 <- select(joined, "aircraft_type", "Distance", "ArrDelay", "DepDelay")
+
+```
+
+```{r}
+SparkR::head(df1)
+```
+
+Carregando tidyr e dplyr
+
+```{r}
+sqlContext <- sparkR.session(sc)
+if (!require("tidyr")) { install.packages("tidyr") }
+if (!require("sparklyr")) { install.packages("sparklyr") }
+if (!require("readr")) { install.packages("readr") }
+#library(dplyr)
+```
+
+Atrasos por Aeroporto
+
+```{r}
+
+joindepart <- join(airlines, airports, airlines$Origin == airports$iata)
+joinDepartWithPlane <- join(joindepart, planes, planes$tailnum == joindepart$TailNum)
+
+lateFlights <- SparkR::filter(joinDepartWithPlane, joinDepartWithPlane$ArrDelay > 0)
+
+groupLateFlights <- groupBy(lateFlights, lateFlights$airport)
+
+SparkR::head(groupLateFlights, 200)
+
+```
+
+
+```{r}
+flights <- read_csv("/resources/2008_simple.csv")
+airports <- read_csv("/resources/airports.csv")
+planes <- read_csv("/resources/plane-data.csv")
+```
+
+
+Rearranjando dados com tidyr, viagens com informacoes similares
+
+```{r}
+    flights %>%
+      filter(!is.na(ArrDelay), ArrDelay > 0) %>%
+      inner_join(airports, by = c("Dest" = "iata")) %>%
+      select(airport, ArrDelay) %>%
+      group_by(airport) %>%
+      summarize(count= n())
+```
